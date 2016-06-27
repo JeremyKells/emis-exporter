@@ -21,6 +21,9 @@
         </Label>
         <Label x:Name="label_Copy" Content="Please select the year, &#xA;then click the Continue &#xA;button.  This will start&#xA;the process.  It may take&#xA;up to a couple of &#xD;&#xA;minutes to complete.&#xA;&#xA;" HorizontalAlignment="Left" Margin="38,114,0,0" VerticalAlignment="Top" Height="177" Width="249" FontSize="18.667" Opacity="0.985" Foreground="#FFE2D8D8"/>
         <ComboBox x:Name="yearSelect" HorizontalAlignment="Left" Margin="364,123,0,0" VerticalAlignment="Top" Width="88" SelectionChanged="yearSelect_SelectionChanged" Height="26">
+            <ComboBoxItem>2009</ComboBoxItem>
+            <ComboBoxItem>2010</ComboBoxItem>
+            <ComboBoxItem>2011</ComboBoxItem>
             <ComboBoxItem>2012</ComboBoxItem>
             <ComboBoxItem>2013</ComboBoxItem>
             <ComboBoxItem>2014</ComboBoxItem>

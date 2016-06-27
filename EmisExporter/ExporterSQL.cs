@@ -8,7 +8,7 @@ namespace EmisExporter
 {
     public partial class Exporter
     {
-        public string sheet2_SQL = @"select
+        static string sheet2_SQL = @"select
                                     LEVEL.ISCED,
                                     'schoolType' = case when sg.school_type = 1 then 'Public' else 'Private' end,
                                     sg.gender,
@@ -31,7 +31,7 @@ namespace EmisExporter
                                     group by ISCED, school_type, gender
                                     ";
 
-        public string sheet3_SQL = @"select ISCED, AGE, gender, count(1) as count from (
+        static string sheet3_SQL = @"select ISCED, AGE, gender, count(1) as count from (
                                     select 
                                     'ISCED' = 
                                         CASE
@@ -52,29 +52,30 @@ namespace EmisExporter
                                     ) v group by ISCED, AGE, gender
                                     ";
 
-        public string sheet5_SQL = @"select
-                                    sg.class, 
+        static string sheet5_SQL = @"select
+                                    sg.class as class, 
                                     isnull(convert(nvarchar(3),AGE),'N/A') AGE,
                                     sg.gender,
                                     count(1) as count
                                     from v_sgca sg
                                     join(select student_id, DATEDIFF(hour, sg.dob, '{0}/1/1' )/ 8766 AS AGE from v_sgca sg where year = {0}) AGES on AGES.student_id = sg.student_id
                                     where sg.year = {0}
-                                    --and AGE is not null
+                                    and class >= 1 and class <= 6
                                     group by sg.class, AGES.AGE, gender
                               ";
-        public string sheet6_SQL = @"select
-                                    sg.class, 
+        static string sheet6_SQL = @"select
+                                    sg.class - 6 as class,
                                     isnull(convert(nvarchar(3),AGE),'N/A') AGE,
                                     sg.gender,
                                     count(1) as count
                                     from v_sgca sg
                                     join(select student_id, DATEDIFF(hour, sg.dob, '{0}/1/1' )/ 8766 AS AGE from v_sgca sg where year = {0}) AGES on AGES.student_id = sg.student_id
                                     where sg.year = {0}
+                                    and class in (7.0, 8.0)
                                     --and AGE is not null
                                     group by sg.class, AGES.AGE, gender
                               ";
-        public string sheet7_SQL = @"select  
+        static string sheet7_SQL = @"select  
                                     LEVEL.ISCED,
                                     sg.class,
                                     gender,
@@ -94,7 +95,7 @@ namespace EmisExporter
                                     group by ISCED, sg.class, gender
                                   ";
 
-        public string sheet8_SQL = @"select 
+        static string sheet8_SQL = @"select 
                                     LEVEL.ISCED,
                                     Ages.AGE, 
                                     gender,
@@ -104,12 +105,12 @@ namespace EmisExporter
                                     join (select distinct sg.student_id as id,
 	                                    'ISCED' = 
 		                                    CASE
-			                                    WHEN sg.class >=1 and sg.class <=6 THEN 'ISCED 1'
-			                                    WHEN sg.class >=7 and sg.class <=8 THEN 'ISCED 2'
+			                                    WHEN sg.class = 1 THEN 'ISCED 1'
+			                                    WHEN sg.class = 7 THEN 'ISCED 2'
 		                                    END from v_sgca sg where year = {0}) 
 	                                    LEVEL on LEVEL.id = sg.student_id
                                     where year = {0}
-                                    and status = 'N' -- New Entrant
+                                    --and status = 'N' -- New Entrant
                                     and ISCED is not null
                                     group by AGE, gender, LEVEL.ISCED
 
@@ -125,7 +126,7 @@ namespace EmisExporter
                                     join (select distinct sg.student_id as id,
 	                                    'ISCED' = 
 		                                    CASE
-			                                    WHEN sg.class >=1 and sg.class <=6 THEN 'ISCED 1-ECE'
+			                                    WHEN sg.class = 1 THEN 'ISCED 1-ECE'
 		                                    END from v_sgca sg where year = {0}) 
 	                                    LEVEL on LEVEL.id = sg.student_id
                                     left outer join (select student_id, CASE WHEN sum(ece) >= 1 THEN 1 ELSE 0 END as ece 
@@ -137,12 +138,35 @@ namespace EmisExporter
 	                                    ece on ece.student_id = sg.student_id
 
                                     where year = {0}
-                                    and status = 'N' -- New Entrant
+                                    -- and status = 'N' -- New Entrant
                                     and ISCED is not null
                                     group by AGE, gender, LEVEL.ISCED
+
+
+									UNION
+
+									select  
+									LEVEL.ISCED,
+                                    Ages.AGE, 
+									gender,
+									'count' = -1 * count(1) 
+									from v_sgca sg
+                                    join (select student_id, DATEDIFF(hour, sg.dob, '{0}/1/1' )/ 8766 AS AGE from v_sgca sg) AGES on AGES.student_id = sg.student_id
+  									join (select distinct sg.student_id as id,
+										'ISCED' = 
+											CASE
+												WHEN sg.class = 1 THEN 'ISCED 1'
+												WHEN sg.class = 7 THEN 'ISCED 2'
+											END from v_sgca sg where year = {0}) 
+										LEVEL on LEVEL.id = sg.student_id
+									where year = {0}
+									and sg.class in (1, 7)
+									and status = 'R'
+									and ISCED is not null
+                                    group by ISCED, AGE, gender
                                     ";
 
-        public string sheet10_SQL = @"select 
+        static string sheet10_SQL = @"select 
                                     LEVEL.ISCED, 
                                     school_type = CASE WHEN school_type = 1 THEN 'PUBLIC' WHEN school_type = 2 THEN 'PRIVATE' END,
                                     gender, 
@@ -159,7 +183,7 @@ namespace EmisExporter
 			                                    WHEN class >=7 and class <=8 THEN 'ISCED 24'
 			                                    WHEN class >=10.1 and class <=10.2 THEN 'ISCED 35'
 			                                    WHEN class >=9 and class <=13 THEN 'ISCED 34'
-		                                    END from TGCA where year = 2014 ) 
+		                                    END from TGCA where year = {0} ) 
 	                                    LEVEL on LEVEL.class = TGCA.class
                                     where year = {0}
                                     and gender in ('F', 'M')
@@ -167,7 +191,7 @@ namespace EmisExporter
                                     ";
 
 
-        public string sheet12_SQL = @"select 
+        static string sheet12_SQL = @"select 
                                     LEVEL.ISCED, 
                                     gender, 
                                     count(1)
@@ -188,5 +212,48 @@ namespace EmisExporter
                                     and teaching_qual = 'Y'
                                     group by ISCED, gender
                                   ";
+
+        public List<string> tuvalu_sql = 
+            new List<string> {  "",
+                                "",
+                                sheet2_SQL,
+                                sheet3_SQL,
+                                "",
+                                sheet5_SQL,
+                                sheet6_SQL,
+                                sheet7_SQL,
+                                sheet8_SQL,
+                                "",
+                                sheet10_SQL,
+                                "",
+                                sheet12_SQL };
+
+        public Dictionary<string, List<string>> sqlDict = 
+            new Dictionary<string, List<string>>();
+
+        public string getSQL(string country, string year, int sheet)
+        {
+            // Initialize Dict
+            if(sqlDict.Count == 0)
+            {
+                List<string> nauru_sql = new List<string> { };
+                tuvalu_sql.ForEach(delegate (string sql)
+                {
+                    nauru_sql.Add(sql.Replace("class", "grade"));
+                });
+                nauru_sql[5] = nauru_sql[5].Replace("grade as grade", "grade as class");
+                nauru_sql[6] = nauru_sql[6].Replace("grade as grade", "grade as class");
+                nauru_sql[12] = nauru_sql[12].Replace("teaching_qual = 'Y'", "qual_type is not null");
+
+                sqlDict.Add("TUVALU", tuvalu_sql);
+                sqlDict.Add("NAURU", nauru_sql);
+                sqlDict.Add("SOLOMON ISLANDS", solomonIslandSQL());
+            }
+
+            return string.Format(
+                sqlDict[country][sheet], 
+                year);
+        }
     }
 }
+

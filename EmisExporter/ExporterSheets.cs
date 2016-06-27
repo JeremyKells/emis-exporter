@@ -10,7 +10,7 @@ namespace EmisExporter
     {
         //private static readonly log4net.ILog log = log4net.LogManager.GetLogger (System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         // A2: Number of students by level of education, intensity of participation, type of institution and sex
-        void sheetA2(Excel.Application excelApp, SqlConnection temis, string year, string country)
+        void sheetA2(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
         {
 
             //Constant references for columns and rows            
@@ -24,12 +24,7 @@ namespace EmisExporter
             Excel.Range usedRange = workSheet.UsedRange;
 
             SqlCommand cmd = new SqlCommand(
-              string.Format(sheet2_SQL, year),
-                                temis);
-            if (country == "NAURU")
-            {
-                cmd.CommandText = cmd.CommandText.Replace("class", "grade");
-            }
+                getSQL(country, year, 2), sqlConn);
 
             Func<string, int> getCol = null;
             getCol = n => usedRange.Find(n).Column;
@@ -48,7 +43,7 @@ namespace EmisExporter
                     string schoolType = rdr.GetString(1);
                     string gender = rdr.GetString(2);
                     int count = rdr.GetInt32(3);
-                    Console.WriteLine(String.Format("{0}, {1}, {2}, {3}", isced, gender, schoolType, count));
+                    //Console.WriteLine(String.Format("{0}, {1}, {2}, {3}", isced, gender, schoolType, count));
 
                     int rowOffset = gender == "M" ? 0 : FEMALE_OFFSET;
                     int row = (schoolType == "Public" ? PUBLIC : PRIVATE) + rowOffset;
@@ -62,7 +57,7 @@ namespace EmisExporter
         }
 
         // A3: Number of students by level of education, age and sex
-        void sheetA3(Excel.Application excelApp, SqlConnection temis, string year, string country)
+        void sheetA3(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
         {
 
             //Constant references for columns and rows            
@@ -70,7 +65,9 @@ namespace EmisExporter
             const int UNDER_TWO = 17;           //row 
             const int TWENTYFIVE_TWENTYNINE = 41;          //row
             const int OVER_TWENTYNINE = 42;        //row
+            const int AGE_UNKNOWN = 43;        //row
             const int ZERO = 16;        //row
+            const int MISSING_AGE = -1;
 
             Excel._Worksheet workSheet = (Excel.Worksheet)excelApp.Worksheets["A3"];
             workSheet.Activate();
@@ -81,12 +78,7 @@ namespace EmisExporter
             getCol.Memoize();
 
             SqlCommand cmd = new SqlCommand(
-              string.Format(sheet3_SQL, year),
-                              temis);
-            if (country == "NAURU")
-            {
-                cmd.CommandText = cmd.CommandText.Replace("class", "grade");
-            }
+                getSQL(country, year, 3), sqlConn);
 
             using (SqlDataReader rdr = cmd.ExecuteReader())
             {
@@ -97,23 +89,26 @@ namespace EmisExporter
                     string gender;
                     int count;
 
+                    isced = rdr.GetString(0);
                     try
                     {
-                        isced = rdr.GetString(0);
                         age = rdr.GetInt32(1);
-                        gender = rdr.GetString(2);
-                        count = rdr.GetInt32(3);
-                    }
-                    catch
+                    } catch (System.Data.SqlTypes.SqlNullValueException e)
                     {
-                        continue;
+                        age = MISSING_AGE;
                     }
+                    gender = rdr.GetString(2);
+                    count = rdr.GetInt32(3);
 
                     int rowOffset = gender == "M" ? 0 : FEMALE_OFFSET;
                     int row;
                     if (age >= 2 && age <= 24)
                     {
                         row = ZERO + age + rowOffset;
+                    }
+                    else if (age == MISSING_AGE)
+                    {
+                        row = AGE_UNKNOWN + rowOffset;
                     }
                     else if (age < 2)
                     {
@@ -134,16 +129,14 @@ namespace EmisExporter
                     }
 
                     int column = getCol(isced);
-
                     workSheet.Cells[row, column] = workSheet.get_Range(helpers.GetCellAddress(column, row)).Value2 + count;
-                    //Console.WriteLine(row.ToString() + " : " + column.ToString());
                 }
             }
         }
 
 
         // A5: Number of students in initial primary education by age, grade and sex																													
-        void sheetA5(Excel.Application excelApp, SqlConnection temis, string year, string country)
+        void sheetA5(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
         {
 
             //Constant references for columns and rows            
@@ -160,14 +153,7 @@ namespace EmisExporter
 
 
             SqlCommand cmd = new SqlCommand(
-              string.Format(sheet5_SQL, year),
-                              temis);
-            string classColName = "class";
-            if (country == "NAURU")
-            {
-                cmd.CommandText = cmd.CommandText.Replace("class", "grade");
-                classColName = "grade";
-            }
+                getSQL(country, year, 5), sqlConn);
 
 
             Func<string, int> getCol = null;
@@ -178,45 +164,42 @@ namespace EmisExporter
             {
                 while (rdr.Read())
                 {
-                    decimal _class = (decimal)rdr[classColName];
+                    decimal _class = (decimal)rdr["class"];
                     string strAge = (string)rdr["AGE"];
                     string gender = (string)rdr["gender"];
                     int count = (int)rdr["count"];
                     
-                    if (_class >= 1 && _class <= 6){
-                        int column = getCol("Grade " + ((int)_class).ToString());
-                        int rowOffset = gender == "M" ? 0 : FEMALE_OFFSET;
-                        int row;
+                    int column = getCol("Grade " + ((int)_class).ToString());
+                    int rowOffset = gender == "M" ? 0 : FEMALE_OFFSET;
+                    int row;
 
-                        if (strAge == "N/A")
-                        {
-                            row = AGE_UNKNOWN + rowOffset;
-                        }
-                        else
-                        {
-                            int age = Convert.ToInt16(strAge);
-                            if (age < 4)
-                            {
-                                row = UNDER_FOUR + rowOffset;
-                            }
-                            else if (age > 24)
-                            {
-                                row = OVER_TWENTYFOUR + rowOffset;
-                            }
-                            else //if (age >= 4 && age <= 24)
-                            {
-                                row = ZERO + age + rowOffset;
-                            }
-                        }
-
-                            workSheet.Cells[row, column] = workSheet.get_Range(helpers.GetCellAddress(column, row)).Value2 + count;
+                    if (strAge == "N/A")
+                    {
+                        row = AGE_UNKNOWN + rowOffset;
                     }
+                    else
+                    {
+                        int age = Convert.ToInt16(strAge);
+                        if (age < 4)
+                        {
+                            row = UNDER_FOUR + rowOffset;
+                        }
+                        else if (age > 24)
+                        {
+                            row = OVER_TWENTYFOUR + rowOffset;
+                        }
+                        else //if (age >= 4 && age <= 24)
+                        {
+                            row = ZERO + age + rowOffset;
+                        }
+                    }
+                    workSheet.Cells[row, column] = workSheet.get_Range(helpers.GetCellAddress(column, row)).Value2 + count;
                 }
             }
         }
 
         // A6: Number of students in initial lower secondary general education by age, grade and sex																										
-        void sheetA6(Excel.Application excelApp, SqlConnection temis, string year, string country)
+        void sheetA6(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
         {
 
             //Constant references for columns and rows            
@@ -232,15 +215,7 @@ namespace EmisExporter
             Excel.Range usedRange = workSheet.UsedRange;
 
             SqlCommand cmd = new SqlCommand(
-               string.Format(sheet6_SQL, year),
-                               temis);
-            string classColName = "class";
-            if (country == "NAURU")
-            {
-                cmd.CommandText = cmd.CommandText.Replace("class", "grade");
-                classColName = "grade";
-            }
-
+                getSQL(country, year, 6), sqlConn);
 
             Func<string, int> getCol = null;
             getCol = n => usedRange.Find(n).Column;
@@ -250,45 +225,43 @@ namespace EmisExporter
             {
                 while (rdr.Read())
                 {
-                    decimal _class = (decimal)rdr[classColName] - 6; 
-                    string strAge = (string)rdr["AGE"];
-                    string gender = (string)rdr["gender"];
-                    int count = (int)rdr["count"];
+                    decimal _class = rdr.GetDecimal(0);
+                    string strAge = rdr.GetString(1);
+                    string gender = rdr.GetString(2);
+                    int count = rdr.GetInt32(3);
 
-                    if (_class >= 1 && _class <= 6)
+                    int column = getCol("Grade " + ((int)_class).ToString());
+                    int rowOffset = gender == "M" ? 0 : FEMALE_OFFSET;
+                    int row;
+                    if (strAge == "N/A")
                     {
-                        int column = getCol("Grade " + ((int)_class).ToString());
-                        int rowOffset = gender == "M" ? 0 : FEMALE_OFFSET;
-                        int row;
-
-                        if (strAge == "N/A")
-                        {
-                            row = AGE_UNKNOWN + rowOffset;
-                        }
-                        else
-                        {
-                            int age = Convert.ToInt16(strAge);
-                            if (age < 10)
-                            {
-                                row = UNDER_TEN + rowOffset;
-                            }
-                            else if (age > 24)
-                            {
-                                row = OVER_TWENTYFOUR + rowOffset;
-                            }
-                            else //if (age >= 10 && age <= 24)
-                            {
-                                row = ZERO + age + rowOffset;
-                            }
-                        }
-                        workSheet.Cells[row, column] = workSheet.get_Range(helpers.GetCellAddress(column, row)).Value2 + count;
+                        row = AGE_UNKNOWN + rowOffset;
                     }
+                    else
+                    {
+                        int age = Convert.ToInt16(strAge);
+                        if (age < 10)
+                        {
+                            row = UNDER_TEN + rowOffset;
+                        }
+                        else if (age > 24)
+                        {
+                            row = OVER_TWENTYFOUR + rowOffset;
+                        }
+                        else //if (age >= 10 && age <= 24)
+                        {
+                            row = ZERO + age + rowOffset;
+                        }
+                    }
+                    Console.WriteLine(String.Format("{0}, {1}, {2}, {3}", _class, strAge, gender, count));
+                    Console.WriteLine(String.Format("{0}, {1}", row, column));
+                    workSheet.Cells[row, column] = workSheet.get_Range(helpers.GetCellAddress(column, row)).Value2 + count;
                 }
             }
         }
 
         // A7: Number of repeaters in initial primary and general secondary education by level, grade and sex																																																							
-        void sheetA7(Excel.Application excelApp, SqlConnection temis, string year, string country)
+        void sheetA7(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
         {
             //Constant references for columns and rows            
             const int MALE_ROW = 17;      //row
@@ -302,13 +275,7 @@ namespace EmisExporter
             Excel.Range usedRange = workSheet.UsedRange;
 
             SqlCommand cmd = new SqlCommand(
-              string.Format(sheet7_SQL, year),
-                              temis);
-            if (country == "NAURU")
-            {
-                cmd.CommandText = cmd.CommandText.Replace("class", "grade");
-            }
-
+                getSQL(country, year, 7), sqlConn);
 
             using (SqlDataReader rdr = cmd.ExecuteReader())
             {
@@ -329,7 +296,7 @@ namespace EmisExporter
         }
 
         // A8: Number of new entrants to Grade 1 in initial education and prior enrolment by age and sex											
-        void sheetA8(Excel.Application excelApp, SqlConnection temis, string year, string country)
+        void sheetA8(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
         {
 
             //Constant references for columns and rows            
@@ -351,12 +318,7 @@ namespace EmisExporter
             getCol.Memoize();
 
             SqlCommand cmd = new SqlCommand(
-              string.Format(sheet8_SQL, year),
-                              temis);
-            if (country == "NAURU")
-            {
-                cmd.CommandText = cmd.CommandText.Replace("class", "grade");
-            }
+                getSQL(country, year, 8), sqlConn);
 
             using (SqlDataReader rdr = cmd.ExecuteReader())
             {
@@ -424,7 +386,7 @@ namespace EmisExporter
         }
 
         // A10: Number of classroom teachers by teaching level of education, employment status, type of institution and sex																																	
-        void sheetA10(Excel.Application excelApp, SqlConnection temis, string year, string country)
+        void sheetA10(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
         {
             //Constant references for columns and rows            
             const int FEMALE_OFFSET = 4;     //row offset
@@ -440,18 +402,14 @@ namespace EmisExporter
             getCol.Memoize();
 
             SqlCommand cmd = new SqlCommand(
-              string.Format(sheet10_SQL, year),
-                              temis);
-            if (country == "NAURU")
-            {
-                cmd.CommandText = cmd.CommandText.Replace("class", "grade");
-            }
+                getSQL(country, year, 10), sqlConn);
 
 
             using (SqlDataReader rdr = cmd.ExecuteReader())
             {
                 while (rdr.Read())
                 {
+                    
                     string isced = rdr.GetString(0);
                     string schoolType = rdr.GetString(1);
                     string gender = rdr.GetString(2);
@@ -486,7 +444,7 @@ namespace EmisExporter
         }
 
         // A12: Number of qualified classroom teachers by teaching level of education and sex																															
-        void sheetA12(Excel.Application excelApp, SqlConnection temis, string year, string country)
+        void sheetA12(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
         {
 
             //Constant references for columns and rows            
@@ -502,13 +460,7 @@ namespace EmisExporter
             getCol.Memoize();
 
             SqlCommand cmd = new SqlCommand(
-              string.Format(sheet12_SQL, year),
-                              temis);
-            if (country == "NAURU")
-            {
-                cmd.CommandText = cmd.CommandText.Replace("class", "grade");
-                cmd.CommandText = cmd.CommandText.Replace("teaching_qual = 'Y'", "qual_type is not null");
-            }
+                getSQL(country, year, 12), sqlConn);
 
             using (SqlDataReader rdr = cmd.ExecuteReader())
             {

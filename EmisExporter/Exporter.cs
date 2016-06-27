@@ -17,34 +17,46 @@ namespace EmisExporter
         
         void worker_DoWork(object sender, DoWorkEventArgs e)
         {
-            try //Comment out this try/catch when debugging
-            {
+            //try //Comment out this try/catch when debugging
+            //{
                 BackgroundWorker worker = sender as BackgroundWorker;
                 string year = (string)e.Argument;
                 var excelApp = new Excel.Application();
                 excelApp.Workbooks.Add((string)ConfigurationManager.AppSettings["UIS Template"]);
 
                 string country = ConfigurationManager.AppSettings["Country"];
-                SqlConnection temis = new SqlConnection(
+                SqlConnection emisDBConn = new SqlConnection(
                     string.Format("Data Source={0};Initial Catalog={1};User id={2};Password={3};",
                                 ConfigurationManager.AppSettings["Data Source"],
                                 ConfigurationManager.AppSettings["Initial Catalog"],
                                 ConfigurationManager.AppSettings["User id"],
                                 ConfigurationManager.AppSettings["Password"]));
-                temis.Open();
+                emisDBConn.Open();
                 List<Action<Excel.Application, SqlConnection, string, string>> sheets;
 
                 switch (country)
                 {
+                    case "SOLOMON ISLANDS":
+                        sheets = new List<Action<Excel.Application, SqlConnection, string, string>> {
+                            //sheetA2, sheetA3, sheetA5, sheetA6, sheetA8
+                            sheetA7
+                        };
+                        break;
                     case "NAURU":
                         sheets = new List<Action<Excel.Application, SqlConnection, string, string>> {
                             sheetA2, sheetA3, sheetA5, sheetA6, sheetA7, sheetA8, sheetA10, sheetA12
                         };
                         break;
-                    default: // Tuvalu
+                    case "TUVALU":
                         sheets = new List<Action<Excel.Application, SqlConnection, string, string>> {
                             sheetA2, sheetA3, sheetA5, sheetA6, sheetA7, sheetA8, sheetA10, sheetA12
                         };
+                        break;
+                    default:
+                        MessageBox.Show("Unknown Country in AppSettings.  Please Check.");
+                        excelApp.Quit();
+                        Environment.Exit(0);
+                        sheets = new List<Action<Excel.Application, SqlConnection, string, string>> { };
                         break;
                 }
 
@@ -52,17 +64,18 @@ namespace EmisExporter
                 for (int i = 0; i < sheets.Count; i++)
                 {
                     Action<Excel.Application, SqlConnection, string, string> fun = sheets[i];
-                    fun(excelApp, temis, year, country);
+                    fun(excelApp, emisDBConn, year, country);
                     double progress = i * (100 / sheets.Count());
                     (sender as BackgroundWorker).ReportProgress((int)progress);
                 }
                 excelApp.Visible = true;
+                excelApp.ActiveWorkbook.SaveAs("UIS_Export.xlsx");
                 e.Result = null;
-            }
-            catch (Exception ex)  // Change to a file based log
-            {
-                MessageBox.Show(ex.ToString(), "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            //}
+            //catch (Exception ex)  // Change to a file based log
+            //{
+            //    MessageBox.Show(ex.ToString(), "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            //}
         }
 
         void worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
