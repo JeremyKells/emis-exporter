@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.Data.SqlClient;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -32,24 +33,74 @@ namespace EmisExporter
                                 ConfigurationManager.AppSettings["User id"],
                                 ConfigurationManager.AppSettings["Password"]));
                 emisDBConn.Open();
-                List<Action<Excel.Application, SqlConnection, string, string>> sheets;
+
+            // Create #StudentsTable
+            SqlCommand DbDropCommand = new SqlCommand("IF OBJECT_ID('tempdb.dbo.#StudentsTable', 'U') IS NOT NULL DROP TABLE dbo.#StudentsTable;", emisDBConn);
+            DbDropCommand.ExecuteNonQuery();
+
+            SqlCommand DbCreateTableCommand
+                = new SqlCommand(@"CREATE TABLE dbo.#StudentsTable (
+                                    ISCED_TOP varchar(300), 
+                                    ISCED varchar(300), 
+                                    SCHOOLTYPE Varchar(1000), 
+                                    GENDER varchar(200), 
+                                    AGE int, 
+                                    REPEATER varchar(1000), 
+                                    CLASS decimal, 
+                                    ECE varchar(600), COUNT int)",
+                                    emisDBConn);
+            DbCreateTableCommand.ExecuteNonQuery();
+
+            string StudentBaseSQL = System.IO.File.ReadAllText(@ConfigurationManager.AppSettings["StudentBaseSQLPath"]);
+            StudentBaseSQL = @"insert into dbo.#StudentsTable (ISCED_TOP, ISCED, SCHOOLTYPE, GENDER, AGE, REPEATER, CLASS, ECE, COUNT) " + String.Format(StudentBaseSQL, year);
+
+            SqlCommand DbInsertCommand = new SqlCommand(StudentBaseSQL, emisDBConn);
+            DbInsertCommand.ExecuteNonQuery();
+
+            // Create #TeachersTable
+            DbDropCommand = new SqlCommand("IF OBJECT_ID('tempdb.dbo.#TeacherBaseTable', 'U') IS NOT NULL DROP TABLE dbo.#TeacherBaseTable;", emisDBConn);
+            DbDropCommand.ExecuteNonQuery();
+
+            DbCreateTableCommand
+                = new SqlCommand(@"CREATE TABLE dbo.#TeacherBaseTable (
+                                    ISCED varchar(300), 
+                                    SCHOOLTYPE Varchar(1000), 
+                                    GENDER varchar(200), 
+                                    QUALIFIED varchar(10), 
+                                    TRAINED varchar(10), 
+                                    COUNT int)",
+                                    emisDBConn);
+            DbCreateTableCommand.ExecuteNonQuery();
+
+            string TeacherBaseSQL = System.IO.File.ReadAllText(@ConfigurationManager.AppSettings["TeacherBaseSQLPath"]);
+            TeacherBaseSQL = @"insert into dbo.#TeacherBaseTable (ISCED, SCHOOLTYPE, GENDER, QUALIFIED, TRAINED, COUNT) " + String.Format(TeacherBaseSQL, year);
+
+            DbInsertCommand = new SqlCommand(TeacherBaseSQL, emisDBConn);
+            DbInsertCommand.ExecuteNonQuery();
+
+            List<Action<Excel.Application, SqlConnection, string, string>> sheets;
 
                 switch (country)
                 {
                     case "SOLOMON ISLANDS":
                         sheets = new List<Action<Excel.Application, SqlConnection, string, string>> {
-                            //sheetA2, sheetA3, sheetA5, sheetA6, sheetA8
-                            sheetA7
+                            //sheetA2, sheetA3, sheetA5, sheetA6, sheetA8, sheetA7
                         };
                         break;
                     case "NAURU":
                         sheets = new List<Action<Excel.Application, SqlConnection, string, string>> {
-                            sheetA2, sheetA3, sheetA5, sheetA6, sheetA7, sheetA8, sheetA10, sheetA12
+                            //sheetA2, sheetA3, sheetA5, sheetA6, sheetA7, sheetA8, sheetA10, sheetA12
                         };
                         break;
                     case "TUVALU":
                         sheets = new List<Action<Excel.Application, SqlConnection, string, string>> {
-                            sheetA2, sheetA3, sheetA5, sheetA6, sheetA7, sheetA8, sheetA10, sheetA12
+                            //sheetA2, 
+                            //sheetA3,
+                            //sheetA5,
+                            //sheetA6,
+                            //sheetA7,
+                            //sheetA9,
+                            sheetA10,
                         };
                         break;
                     default:

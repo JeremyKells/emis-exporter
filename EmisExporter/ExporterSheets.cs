@@ -14,19 +14,19 @@ namespace EmisExporter
         {
 
             //Constant references for columns and rows            
-            const int FEMALE_OFFSET = 4;     //row offset
-            const int PUBLIC = 17;           //row 
-            const int PRIVATE = 18;          //row
-            //const int PART_TIME = 28;        //row
-            //log.Error("sheetA2");
+            const int FEMALE_OFFSET = 1;     //row offset
+            const int PUBLIC = 14;           //row 
+            const int PRIVATE = 17;          //row
+
             Excel._Worksheet workSheet = (Excel.Worksheet)excelApp.Worksheets["A2"];
             workSheet.Activate();
             Excel.Range usedRange = workSheet.UsedRange;
 
             SqlCommand cmd = new SqlCommand(
-                getSQL(country, year, 2), sqlConn);
+                @"select ISCED, SCHOOLTYPE, gender, sum(count) as COUNT from #StudentsTable group by ISCED, SCHOOLTYPE, gender", 
+                sqlConn);
 
-            Func<string, int> getCol = null;
+            Func <string, int> getCol = null;
             getCol = n => usedRange.Find(n).Column;
             getCol.Memoize();
 
@@ -47,7 +47,6 @@ namespace EmisExporter
 
                     int rowOffset = gender == "M" ? 0 : FEMALE_OFFSET;
                     int row = (schoolType == "Public" ? PUBLIC : PRIVATE) + rowOffset;
-                    //int column = usedRange.Find(isced).Column;
                     int column = getCol(isced);
 
                     workSheet.Cells[row, column] = count;
@@ -62,11 +61,11 @@ namespace EmisExporter
 
             //Constant references for columns and rows            
             const int FEMALE_OFFSET = 29;     //row offset
-            const int UNDER_TWO = 17;           //row 
-            const int TWENTYFIVE_TWENTYNINE = 41;          //row
-            const int OVER_TWENTYNINE = 42;        //row
-            const int AGE_UNKNOWN = 43;        //row
-            const int ZERO = 16;        //row
+            const int UNDER_TWO = 14;           //row 
+            const int TWENTYFIVE_TWENTYNINE = 38;          //row
+            const int OVER_TWENTYNINE = 39;        //row
+            const int AGE_UNKNOWN = 40;        //row
+            const int ZERO = 13;        //row
             const int MISSING_AGE = -1;
 
             Excel._Worksheet workSheet = (Excel.Worksheet)excelApp.Worksheets["A3"];
@@ -78,7 +77,8 @@ namespace EmisExporter
             getCol.Memoize();
 
             SqlCommand cmd = new SqlCommand(
-                getSQL(country, year, 3), sqlConn);
+                @"select ISCED, AGE, gender, sum(count) as COUNT from #StudentsTable group by ISCED, AGE, gender",
+                sqlConn);
 
             using (SqlDataReader rdr = cmd.ExecuteReader())
             {
@@ -140,21 +140,23 @@ namespace EmisExporter
         {
 
             //Constant references for columns and rows            
-            const int FEMALE_OFFSET = 26;     //row offset
+            const int FEMALE_OFFSET = 27;     //row offset
             const int AGE_UNKNOWN = 40;       //row
             const int UNDER_FOUR = 17;        //row
             const int OVER_TWENTYFOUR = 39;   //row
-            const int ZERO = 14;              //row offset 
+            const int ZERO = 11;              //row offset 
+            const int REPEATERS = 39;         //row
             //const int UNSPECIFIED_GRADE = 38; //column AL
 
             Excel._Worksheet workSheet = (Excel.Worksheet)excelApp.Worksheets["A5"];
             workSheet.Activate();
             Excel.Range usedRange = workSheet.UsedRange;
 
-
             SqlCommand cmd = new SqlCommand(
-                getSQL(country, year, 5), sqlConn);
-
+               @"select CLASS, AGE, gender, REPEATER, sum(count) as COUNT from #StudentsTable
+                    where class >= 1 and class <= 6
+                    group by CLASS, AGE, gender, REPEATER", 
+               sqlConn);
 
             Func<string, int> getCol = null;
             getCol = n => usedRange.Find(n).Column;
@@ -165,8 +167,9 @@ namespace EmisExporter
                 while (rdr.Read())
                 {
                     decimal _class = (decimal)rdr["class"];
-                    string strAge = (string)rdr["AGE"];
+                    string strAge = rdr["AGE"].ToString();
                     string gender = (string)rdr["gender"];
+                    string repeaters = (string)rdr["REPEATER"];
                     int count = (int)rdr["count"];
                     
                     int column = getCol("Grade " + ((int)_class).ToString());
@@ -194,6 +197,12 @@ namespace EmisExporter
                         }
                     }
                     workSheet.Cells[row, column] = workSheet.get_Range(helpers.GetCellAddress(column, row)).Value2 + count;
+
+                    if (repeaters == "Repeaters")
+                    {
+                        row = REPEATERS + rowOffset;
+                        workSheet.Cells[row, column] = workSheet.get_Range(helpers.GetCellAddress(column, row)).Value2 + count;
+                    }
                 }
             }
         }
@@ -203,11 +212,12 @@ namespace EmisExporter
         {
 
             //Constant references for columns and rows            
-            const int FEMALE_OFFSET = 20;     //row offset
-            const int AGE_UNKNOWN = 34;       //row
+            const int FEMALE_OFFSET = 21;     //row offset
+            const int AGE_UNKNOWN = 31;       //row
             const int UNDER_TEN = 17;         //row
-            const int OVER_TWENTYFOUR = 33;   //row
-            const int ZERO = 8;               //row offset 
+            const int OVER_TWENTYFOUR = 30;   //row
+            const int ZERO = 10;               //row offset 
+            const int REPEATERS = 33;         //row
             //const int UNSPECIFIED_GRADE = 35; // column AI
 
             Excel._Worksheet workSheet = (Excel.Worksheet)excelApp.Worksheets["A6"];
@@ -215,7 +225,10 @@ namespace EmisExporter
             Excel.Range usedRange = workSheet.UsedRange;
 
             SqlCommand cmd = new SqlCommand(
-                getSQL(country, year, 6), sqlConn);
+                @"select CLASS - 6 as CLASS, AGE, gender, REPEATER, sum(count) as COUNT from #StudentsTable
+                    where ISCED = 'ISCED 24'
+                    group by CLASS, AGE, gender, REPEATER", 
+                sqlConn);
 
             Func<string, int> getCol = null;
             getCol = n => usedRange.Find(n).Column;
@@ -225,10 +238,11 @@ namespace EmisExporter
             {
                 while (rdr.Read())
                 {
-                    decimal _class = rdr.GetDecimal(0);
-                    string strAge = rdr.GetString(1);
-                    string gender = rdr.GetString(2);
-                    int count = rdr.GetInt32(3);
+                    decimal _class = (decimal)rdr["class"];
+                    string strAge = rdr["AGE"].ToString();
+                    string gender = (string)rdr["gender"];
+                    string repeaters = (string)rdr["REPEATER"];
+                    int count = (int)rdr["count"];
 
                     int column = getCol("Grade " + ((int)_class).ToString());
                     int rowOffset = gender == "M" ? 0 : FEMALE_OFFSET;
@@ -256,60 +270,31 @@ namespace EmisExporter
                     Console.WriteLine(String.Format("{0}, {1}, {2}, {3}", _class, strAge, gender, count));
                     Console.WriteLine(String.Format("{0}, {1}", row, column));
                     workSheet.Cells[row, column] = workSheet.get_Range(helpers.GetCellAddress(column, row)).Value2 + count;
+
+                    if (repeaters == "Repeaters")
+                    {
+                        row = REPEATERS + rowOffset;
+                        workSheet.Cells[row, column] = workSheet.get_Range(helpers.GetCellAddress(column, row)).Value2 + count;
+                    }
                 }
             }
         }
 
-        // A7: Number of repeaters in initial primary and general secondary education by level, grade and sex																																																							
+        // A7: Number of new entrants to Grade 1 in initial education and prior enrolment by age and sex											
         void sheetA7(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
         {
+
             //Constant references for columns and rows            
-            const int MALE_ROW = 17;      //row
-            const int FEMALE_ROW = 18;      //row
-            const int ZERO = 14;            //column
-            const int SECONDARY_OFFSET = 9; //column offset
-            const int UPPER_SECONDARY = 68; //column
+            const int FEMALE_OFFSET = 21;           //row offset
+            const int UNDER_FOUR = 14;              //row 
+            const int OVER_EIGHTEEN = 30;           //row
+            const int ZERO = 11;                    //row offset
+            const int AGE_UNKNOWN = 31;             //row
+            const int PRIMARY_COL = 17;             //col
+            const int ECE = 33;                     //row
+            const int LOWER_SECONDARY_COL = 20;     //col
 
             Excel._Worksheet workSheet = (Excel.Worksheet)excelApp.Worksheets["A7"];
-            workSheet.Activate();
-            Excel.Range usedRange = workSheet.UsedRange;
-
-            SqlCommand cmd = new SqlCommand(
-                getSQL(country, year, 7), sqlConn);
-
-            using (SqlDataReader rdr = cmd.ExecuteReader())
-            {
-                while (rdr.Read())
-                {
-                    string isced = rdr.GetString(0);
-                    Decimal _class = rdr.GetDecimal(1);
-                    string gender = rdr.GetString(2);
-                    int count = rdr.GetInt32(3);
-
-                    int row = gender == "M" ? MALE_ROW : FEMALE_ROW;
-                    int column = ZERO + (int)(_class * 3);
-                    column = (isced == "ISCED 2") ? column + SECONDARY_OFFSET : column;
-                    column = (isced == "ISCED 3") ? UPPER_SECONDARY : column;
-                    workSheet.Cells[row, column] = workSheet.get_Range(helpers.GetCellAddress(column, row)).Value2 + count;
-                }
-            }
-        }
-
-        // A8: Number of new entrants to Grade 1 in initial education and prior enrolment by age and sex											
-        void sheetA8(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
-        {
-
-            //Constant references for columns and rows            
-            const int FEMALE_OFFSET = 20;           //row offset
-            const int UNDER_FOUR = 17;              //row 
-            const int OVER_EIGHTEEN = 33;           //row
-            const int ZERO = 14;                    //row offset
-            const int AGE_UNKNOWN = 34;             //row
-            const int PRIMARY_COL = 17;             //col
-            const int PRIMARY_ECE_COL = 20;         //col
-            const int LOWER_SECONDARY_COL = 23;     //col
-
-            Excel._Worksheet workSheet = (Excel.Worksheet)excelApp.Worksheets["A8"];
             workSheet.Activate();
             Excel.Range usedRange = workSheet.UsedRange;
 
@@ -318,7 +303,12 @@ namespace EmisExporter
             getCol.Memoize();
 
             SqlCommand cmd = new SqlCommand(
-                getSQL(country, year, 8), sqlConn);
+                @"select ISCED_TOP as ISCED, AGE, gender, ECE, sum(count) as COUNT from #StudentsTable
+                    where class in (1.0, 7.0)
+                    and REPEATER = ''
+                    --where AGE = 4 and gender = 'F'
+                    group by ISCED_TOP, gender, AGE, ECE", 
+                sqlConn);
 
             using (SqlDataReader rdr = cmd.ExecuteReader())
             {
@@ -327,15 +317,18 @@ namespace EmisExporter
                     string isced;
                     int age;
                     string gender;
+                    string ece;
                     int count;
 
                     try
                     {
-                        isced = rdr.GetString(0);
-                        age = rdr.GetInt32(1);
-                        gender = rdr.GetString(2);
-                        count = rdr.GetInt32(3);
-                        Console.WriteLine(String.Format("{0}, {1}, {2}, {3}", isced, gender, age, count));
+                        isced = (string)rdr["ISCED"];
+                        age = (int)rdr["AGE"];
+                        gender = (string)rdr["gender"];
+                        ece = (string)rdr["ECE"];
+                        count = (int)rdr["count"];
+
+                        Console.WriteLine(String.Format("{0}, {1}, {2}, {3}, {4}", isced, gender, age, ece, count));
                     }
                     catch
                     {
@@ -362,38 +355,40 @@ namespace EmisExporter
                     }
 
                     int column;
-                    switch (isced)
-                    {
-                        case "ISCED 1":
-                            column = PRIMARY_COL;
-                            break;
-                        case "ISCED 1-ECE":
-                            column = PRIMARY_ECE_COL;
-                            break;
-                        case "ISCED 2":
-                            column = LOWER_SECONDARY_COL;
-                            break;
-                        default:
-                            column = 0;  // ERROR
-                            break;
-                    }
 
-                    workSheet.Cells[row, column] = workSheet.get_Range(helpers.GetCellAddress(column, row)).Value2 + count;
-                    Console.WriteLine(age + " " + isced + " " + gender);
-                    Console.WriteLine(row.ToString() + " : " + column.ToString());
+                    if(isced == "ISCED 1")
+                    {
+                        Console.WriteLine(age + " " + isced + " " + gender);
+                        Console.WriteLine(row.ToString() + " : " + PRIMARY_COL.ToString());
+                        workSheet.Cells[row, PRIMARY_COL] = workSheet.get_Range(helpers.GetCellAddress(PRIMARY_COL, row)).Value2 + count;
+                        if (ece == "ECE")
+                        {
+                            row = ECE + rowOffset;
+                            Console.WriteLine(age + " " + isced + " " + gender);
+                            Console.WriteLine(row.ToString() + " : " + PRIMARY_COL.ToString());
+                            workSheet.Cells[row, PRIMARY_COL] = workSheet.get_Range(helpers.GetCellAddress(PRIMARY_COL, row)).Value2 + count;
+
+                        }
+                    }
+                    else if (isced == "ISCED 2")
+                    {
+                        Console.WriteLine(age + " " + isced + " " + gender);
+                        Console.WriteLine(row.ToString() + " : " + LOWER_SECONDARY_COL.ToString());
+                        workSheet.Cells[row, LOWER_SECONDARY_COL] = workSheet.get_Range(helpers.GetCellAddress(LOWER_SECONDARY_COL, row)).Value2 + count;
+                    }
                 }
             }
         }
 
-        // A10: Number of classroom teachers by teaching level of education, employment status, type of institution and sex																																	
-        void sheetA10(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
+        // A9: Number of classroom teachers by teaching level of education, employment status, type of institution and sex																																	
+        void sheetA9(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
         {
             //Constant references for columns and rows            
-            const int FEMALE_OFFSET = 4;     //row offset
-            const int PUBLIC = 17;
-            const int PRIVATE = 18;
+            const int FEMALE_OFFSET = 1;     //row offset
+            const int PUBLIC = 14;
+            const int PRIVATE = 17;
 
-            Excel._Worksheet workSheet = (Excel.Worksheet)excelApp.Worksheets["A10"];
+            Excel._Worksheet workSheet = (Excel.Worksheet)excelApp.Worksheets["A9"];
             workSheet.Activate();
             Excel.Range usedRange = workSheet.UsedRange;
 
@@ -402,7 +397,10 @@ namespace EmisExporter
             getCol.Memoize();
 
             SqlCommand cmd = new SqlCommand(
-                getSQL(country, year, 10), sqlConn);
+                @"select ISCED, SCHOOLTYPE, GENDER, sum(COUNT) as COUNT 
+                    from #TeacherBaseTable
+                    group by ISCED, SCHOOLTYPE, GENDER", 
+                sqlConn);
 
 
             using (SqlDataReader rdr = cmd.ExecuteReader())
@@ -414,7 +412,7 @@ namespace EmisExporter
                     string schoolType = rdr.GetString(1);
                     string gender = rdr.GetString(2);
                     int count = rdr.GetInt32(3);
-                    Console.WriteLine(String.Format("{0}, {1}, {2}, {3}", isced, gender, schoolType, count));
+                    Console.WriteLine(String.Format("{0}, {1}, {2}, {3}", isced, gender, schoolType, count.ToString()));
 
                     int rowOffset = gender == "M" ? 0 : FEMALE_OFFSET;
                     int row = schoolType == "PUBLIC" ? PUBLIC : PRIVATE + rowOffset;
@@ -443,15 +441,20 @@ namespace EmisExporter
             }
         }
 
-        // A12: Number of qualified classroom teachers by teaching level of education and sex																															
-        void sheetA12(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
+        // A10: Number of classroom teachers by qualified and trained status, teaching level of education, type of institution and sex
+        void sheetA10(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
         {
 
             //Constant references for columns and rows            
-            const int FEMALE = 18;     //row offset
-            const int MALE = 17;
+            //const int FEMALE = 18;     //row offset
+            //const int MALE = 17;
 
-            Excel._Worksheet workSheet = (Excel.Worksheet)excelApp.Worksheets["A12"];
+            const int FEMALE_OFFSET = 1;     //row offset
+            const int TRAINED_OFFSET = 10;     //row offset
+            const int PUBLIC = 14;
+            const int PRIVATE = 17;
+
+            Excel._Worksheet workSheet = (Excel.Worksheet)excelApp.Worksheets["A10"];
             workSheet.Activate();
             Excel.Range usedRange = workSheet.UsedRange;
 
@@ -460,17 +463,24 @@ namespace EmisExporter
             getCol.Memoize();
 
             SqlCommand cmd = new SqlCommand(
-                getSQL(country, year, 12), sqlConn);
+                @"select ISCED, SCHOOLTYPE, GENDER, QUALIFIED, TRAINED, sum(COUNT) as COUNT from #TeacherBaseTable
+                    group by ISCED, SCHOOLTYPE, GENDER, QUALIFIED, TRAINED", 
+                sqlConn);
 
             using (SqlDataReader rdr = cmd.ExecuteReader())
             {
                 while (rdr.Read())
                 {
                     string isced = rdr.GetString(0);
-                    string gender = rdr.GetString(1);
-                    int count = rdr.GetInt32(2);
+                    string schooltype = rdr.GetString(1);
+                    string gender = rdr.GetString(2);
+                    string qualified = rdr.GetString(3);
+                    string trained = rdr.GetString(4);
+                    int count = rdr.GetInt32(5);
 
-                    int row = gender == "M" ? MALE : FEMALE;
+                    int row = (schooltype == "PUBLIC" ? PUBLIC : PRIVATE  )
+                            + (gender     == "F"      ? FEMALE_OFFSET  : 0)
+                            + (trained    == "Y"      ? TRAINED_OFFSET : 0);
                     List<string> columns = new List<string>();
 
                     if (isced == "ISCED 24" || isced == "ISCED 34")
