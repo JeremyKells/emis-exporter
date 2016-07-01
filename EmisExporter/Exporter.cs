@@ -73,55 +73,41 @@ namespace EmisExporter
             DbCreateTableCommand.ExecuteNonQuery();
 
             string TeacherBaseSQL = System.IO.File.ReadAllText(@ConfigurationManager.AppSettings["TeacherBaseSQLPath"]);
-            TeacherBaseSQL = @"insert into dbo.#TeacherBaseTable (ISCED, SCHOOLTYPE, GENDER, QUALIFIED, TRAINED, COUNT) " + String.Format(TeacherBaseSQL, year);
+            TeacherBaseSQL = @"insert into dbo.#TeacherBaseTable (ISCED, SCHOOLTYPE, GENDER, TRAINED, QUALIFIED, COUNT) " + String.Format(TeacherBaseSQL, year);
 
             DbInsertCommand = new SqlCommand(TeacherBaseSQL, emisDBConn);
             DbInsertCommand.ExecuteNonQuery();
 
-            List<Action<Excel.Application, SqlConnection, string, string>> sheets;
+            List<Action<Excel.Application, SqlConnection, string, string>> sheets = new List<Action<Excel.Application, SqlConnection, string, string>> { };
 
-                switch (country)
-                {
-                    case "SOLOMON ISLANDS":
-                        sheets = new List<Action<Excel.Application, SqlConnection, string, string>> {
-                            //sheetA2, sheetA3, sheetA5, sheetA6, sheetA8, sheetA7
-                        };
-                        break;
-                    case "NAURU":
-                        sheets = new List<Action<Excel.Application, SqlConnection, string, string>> {
-                            //sheetA2, sheetA3, sheetA5, sheetA6, sheetA7, sheetA8, sheetA10, sheetA12
-                        };
-                        break;
-                    case "TUVALU":
-                        sheets = new List<Action<Excel.Application, SqlConnection, string, string>> {
-                            //sheetA2, 
-                            //sheetA3,
-                            //sheetA5,
-                            //sheetA6,
-                            //sheetA7,
-                            //sheetA9,
-                            sheetA10,
-                        };
-                        break;
-                    default:
-                        MessageBox.Show("Unknown Country in AppSettings.  Please Check.");
-                        excelApp.Quit();
-                        Environment.Exit(0);
-                        sheets = new List<Action<Excel.Application, SqlConnection, string, string>> { };
-                        break;
-                }
+            List<string> ssheets = ConfigurationManager.AppSettings["Sheets"].Replace(" ", string.Empty).Split(',').ToList();
 
-                sheets.Reverse();  // Leaves Excel open on first sheet, and progressbar will initially update faster
-                for (int i = 0; i < sheets.Count; i++)
+            Dictionary<String, Action<Excel.Application, SqlConnection, string, string>> actionMap 
+                = new Dictionary<String, Action<Excel.Application, SqlConnection, string, string>>()
                 {
-                    Action<Excel.Application, SqlConnection, string, string> fun = sheets[i];
-                    fun(excelApp, emisDBConn, year, country);
-                    double progress = i * (100 / sheets.Count());
-                    (sender as BackgroundWorker).ReportProgress((int)progress);
-                }
-                excelApp.Visible = true;
-                excelApp.ActiveWorkbook.SaveAs("UIS_Export.xlsx");
-                e.Result = null;
+                    {"A2", sheetA2 },
+                    {"A3", sheetA3 },
+                    {"A5", sheetA5 },
+                    {"A6", sheetA6 },
+                    {"A7", sheetA7 },
+                    {"A9", sheetA9 },
+                    {"A10", sheetA10 },
+                };
+
+            foreach (String sheet in ssheets)
+                sheets.Add(actionMap[sheet]);
+
+            sheets.Reverse();  // Leaves Excel open on first sheet, and progressbar will initially update faster
+            for (int i = 0; i < sheets.Count; i++)
+            {
+                Action<Excel.Application, SqlConnection, string, string> fun = sheets[i];
+                fun(excelApp, emisDBConn, year, country);
+                double progress = i * (100 / sheets.Count());
+                (sender as BackgroundWorker).ReportProgress((int)progress);
+            }
+            excelApp.Visible = true;
+            excelApp.ActiveWorkbook.SaveAs("UIS_Export.xlsx");
+            e.Result = null;
             //}
             //catch (Exception ex)  // Change to a file based log
             //{

@@ -2,8 +2,8 @@ select
 	LEVEL.ISCED,
 	SCHOOLTYPE = CASE WHEN school_type = 1 THEN 'PUBLIC' WHEN school_type = 2 THEN 'PRIVATE' END,
 	GENDER,
-	ISNULL(teaching_qual, 'N') as QUALIFIED,
-	'N' as TRAINED,
+	ISNULL(teaching_qual, 'N') as TRAINED,
+	QUALIFIED = CASE WHEN ISNULL(STAFF.qual_level, '')  = '' THEN 'N' ELSE 'Y' END,
 	count(1) as COUNT
 from TGCA
 left outer join STAFF on TGCA.staff_id = STAFF.staff_id
@@ -20,4 +20,4 @@ left outer join (select distinct class,
 			END from TGCA where year = {0} ) 	LEVEL on LEVEL.class = TGCA.class
 where year = {0}
 and gender in ('F', 'M')
-group by ISCED, gender, school_type, teaching_qual
+group by ISCED, gender, school_type, teaching_qual, STAFF.qual_level
