@@ -93,7 +93,7 @@ namespace EmisExporter
                     try
                     {
                         age = rdr.GetInt32(1);
-                    } catch (System.Data.SqlTypes.SqlNullValueException e)
+                    } catch (System.Data.SqlTypes.SqlNullValueException)
                     {
                         age = MISSING_AGE;
                     }
