@@ -354,8 +354,6 @@ namespace EmisExporter
                         row = AGE_UNKNOWN + rowOffset;
                     }
 
-                    int column;
-
                     if(isced == "ISCED 1")
                     {
                         Console.WriteLine(age + " " + isced + " " + gender);

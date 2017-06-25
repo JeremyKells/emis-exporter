@@ -7,8 +7,8 @@
         mc:Ignorable="d"
         Title="EMIS Exporter" Height="357" Width="527">
     <Grid Margin="0,0,-273,-92">
-        <Image Source="/img/bg.jpg" Stretch="UniformToFill" Margin="0,0,257,86"/>
-        <Image x:Name="image" HorizontalAlignment="Left" Height="79" Margin="38,21,0,0" VerticalAlignment="Top" Width="155" Source="/img/Icon_EMIS.jpg"/>
+        <Image Source="Images/bg.jpg" Stretch="UniformToFill" Margin="0,0,257,86"/>
+        <Image x:Name="image" HorizontalAlignment="Left" Height="79" Margin="38,21,0,0" VerticalAlignment="Top" Width="155" Source="Images/Icon_EMIS.jpg"/>
         <Label x:Name="label" Content="This Exporter will assist you in &#xD;&#xA;completing the UIS Questionnaire." HorizontalAlignment="Left" Margin="205,20,0,0" VerticalAlignment="Top" Height="100" Width="294" FontSize="18.667" Opacity="0.985" Foreground="#FFE2D8D8" RenderTransformOrigin="0.5,0.5">
             <Label.RenderTransform>
                 <TransformGroup>
