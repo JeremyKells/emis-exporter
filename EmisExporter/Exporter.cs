@@ -18,12 +18,16 @@ namespace EmisExporter
         
         void worker_DoWork(object sender, DoWorkEventArgs e)
         {
-            //try //Comment out this try/catch when debugging
-            //{
+            try //Comment out this try/catch when debugging
+            {
                 BackgroundWorker worker = sender as BackgroundWorker;
                 string year = (string)e.Argument;
                 var excelApp = new Excel.Application();
-                excelApp.Workbooks.Add((string)ConfigurationManager.AppSettings["UIS Template"]);
+
+                var projectPath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.FullName;
+                string filePath = Path.Combine(projectPath, (string)ConfigurationManager.AppSettings["UIS Template"]);
+
+                excelApp.Workbooks.Add(filePath);
 
                 string country = ConfigurationManager.AppSettings["Country"];
                 SqlConnection emisDBConn = new SqlConnection(
@@ -51,7 +55,7 @@ namespace EmisExporter
                                     emisDBConn);
             DbCreateTableCommand.ExecuteNonQuery();
 
-            string StudentBaseSQL = System.IO.File.ReadAllText(@ConfigurationManager.AppSettings["StudentBaseSQLPath"]);
+            string StudentBaseSQL = File.ReadAllText(@Path.Combine(projectPath, "SQL", (string)ConfigurationManager.AppSettings["StudentBaseSQLPath"]));
             StudentBaseSQL = @"insert into dbo.#StudentsTable (ISCED_TOP, ISCED, SCHOOLTYPE, GENDER, AGE, REPEATER, CLASS, ECE, COUNT) " + String.Format(StudentBaseSQL, year);
 
             SqlCommand DbInsertCommand = new SqlCommand(StudentBaseSQL, emisDBConn);
@@ -72,7 +76,7 @@ namespace EmisExporter
                                     emisDBConn);
             DbCreateTableCommand.ExecuteNonQuery();
 
-            string TeacherBaseSQL = System.IO.File.ReadAllText(@ConfigurationManager.AppSettings["TeacherBaseSQLPath"]);
+            string TeacherBaseSQL = System.IO.File.ReadAllText(@Path.Combine(projectPath, "SQL", (string)ConfigurationManager.AppSettings["TeacherBaseSQLPath"]));
             TeacherBaseSQL = @"insert into dbo.#TeacherBaseTable (ISCED, SCHOOLTYPE, GENDER, TRAINED, QUALIFIED, COUNT) " + String.Format(TeacherBaseSQL, year);
 
             DbInsertCommand = new SqlCommand(TeacherBaseSQL, emisDBConn);
@@ -108,12 +112,12 @@ namespace EmisExporter
             excelApp.Visible = true;
             excelApp.ActiveWorkbook.SaveAs("UIS_Export.xlsx");
             e.Result = null;
-            //}
-            //catch (Exception ex)  // Change to a file based log
-            //{
-            //    MessageBox.Show(ex.ToString(), "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            //}
         }
+            catch (Exception ex)  // Change to a file based log
+            {
+                MessageBox.Show(ex.ToString(), "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+}
 
         void worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
