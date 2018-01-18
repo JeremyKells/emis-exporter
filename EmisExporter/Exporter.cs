@@ -21,12 +21,9 @@ namespace EmisExporter
             {
                 BackgroundWorker worker = sender as BackgroundWorker;
                 string year = (string)e.Argument;
-                var excelApp = new Excel.Application();
+                Excel.Application excelApp = new Excel.Application();
 
-                excelApp.Visible = true;
-
-                var projectPath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.FullName;
-                string filePath = Path.Combine(projectPath, (string)ConfigurationManager.AppSettings["UIS Template"]);
+                string filePath = Path.Combine(Directory.GetCurrentDirectory(), (string)ConfigurationManager.AppSettings["UIS Template"]);
 
                 excelApp.Workbooks.Add(filePath);
 
@@ -40,7 +37,7 @@ namespace EmisExporter
                 emisDBConn.Open();
 
                 // Create Base Tables
-                string BaseSQL = File.ReadAllText(@Path.Combine(projectPath, "SQL", (string)ConfigurationManager.AppSettings["BaseSQLPath"]));
+                string BaseSQL = File.ReadAllText(@Path.Combine(Directory.GetCurrentDirectory(), "SQL", (string)ConfigurationManager.AppSettings["BaseSQLPath"]));
                 BaseSQL = String.Format(BaseSQL, year);
                 new SqlCommand(BaseSQL, emisDBConn).ExecuteNonQuery();
 
