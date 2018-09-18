@@ -153,6 +153,9 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
+    <Content Include="SQL\FSMBaseTables.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="SQL\KiribatiBaseTables.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
