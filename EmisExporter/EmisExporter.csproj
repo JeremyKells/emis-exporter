@@ -153,6 +153,9 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
+    <Content Include="SQL\RMIBaseTables.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="SQL\FSMBaseTables.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
