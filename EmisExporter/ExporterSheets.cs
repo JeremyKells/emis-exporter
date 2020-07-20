@@ -396,7 +396,9 @@ namespace EmisExporter
           int count = rdr.GetInt32(3);
 
           int rowOffset = gender == "M" ? 0 : FEMALE_OFFSET;
-          int row = schoolType == "PUBLIC" ? PUBLIC : PRIVATE + rowOffset;
+          int row = (schoolType == "PUBLIC" ? PUBLIC : PRIVATE) + rowOffset;
+
+          //Console.WriteLine(String.Format("{0}, {1}, {2}, {3}, {4}, {5}", isced, schoolType, gender, count, rowOffset, row));
 
           List<string> columns = new List<string>();
 
@@ -456,6 +458,8 @@ namespace EmisExporter
           int row = (schooltype == "PUBLIC" ? PUBLIC : PRIVATE)
                             + (gender == "F" ? FEMALE_OFFSET : 0);
 
+          Console.WriteLine(String.Format("{0}, {1}, {2}, {3}, {4}, {5}", isced, schooltype, gender, qualified, trained, row));
+
           List<string> columns = new List<string>();
 
           if (isced == "ISCED 24" || isced == "ISCED 34")
@@ -474,8 +478,12 @@ namespace EmisExporter
           }
           foreach (string column in columns)
           {
-            workSheet.Cells[row, getCol(column)] = workSheet.get_Range(helpers.GetCellAddress(getCol(column), row)).Value2 + qualified;
-            workSheet.Cells[row + TRAINED_OFFSET, getCol(column)] = workSheet.get_Range(helpers.GetCellAddress(getCol(column), row)).Value2 + trained;
+            // This val below was added to both qualified and trained values below. I'm not sure why
+            // but it was providing incorrect trained teachers (those figure were actually trained + qualified
+            // inflating numbers to impossible figures (e.g. 300 trained and only 200 total teachers)
+            //double val = workSheet.get_Range(helpers.GetCellAddress(getCol(column), row)).Value2;
+            workSheet.Cells[row, getCol(column)] = qualified;
+            workSheet.Cells[row + TRAINED_OFFSET, getCol(column)] = trained;
           }
         }
       }

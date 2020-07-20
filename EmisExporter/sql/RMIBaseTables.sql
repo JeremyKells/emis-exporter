@@ -12,7 +12,7 @@ CASE DL.[ISCED Level]
   WHEN 'ISCED2' THEN 'ISCED 24'
   WHEN 'ISCED3' THEN 'ISCED 34'
 END as ISCED,
-CASE DA.AuthorityGroup 	WHEN 'Government' THEN 'Public'	ELSE 'Private' END as SCHOOLTYPE,
+CASE DA.AuthorityGroup 	WHEN 'Public' THEN 'Public'	ELSE 'Private' END as SCHOOLTYPE,
 E.GenderCode as GENDER,
 ISNULL(E.Age, -1) as AGE,
 DL.[Year of Education] as CLASS,
@@ -25,7 +25,8 @@ into dbo.#StudentsBaseTable
 from warehouse.tableEnrol E
 left join DimensionAuthority DA on E.AuthorityCode = DA.AuthorityCode
 left join DimensionLevel DL on E.ClassLevel = DL.LevelCode
-where E.SurveyYear = @year AND E.Enrol IS NOT NULL
+where E.SurveyYear = @year
+and E.Enrol is not null
 
 group by DL.[ISCED Level], DA.AuthorityGroup, E.GenderCode, E.Age, DL.[Year of Education]
 --Teachers
@@ -51,5 +52,6 @@ into dbo.#TeacherBaseTable
 
 from warehouse.schoolTeacherCount t
 left join DimensionAuthority da on da.AuthorityCode = t.AuthorityCode
-where t.SurveyYear = @year AND t.GenderCode IS NOT NULL
+where t.SurveyYear = @year
+and t.GenderCode IS NOT NULL
 group by t.ISCEDSubClass, da.AuthorityGroupCode, t.GenderCode
