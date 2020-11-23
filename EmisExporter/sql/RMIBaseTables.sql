@@ -50,7 +50,7 @@ select
 
 into dbo.#TeacherBaseTable 
 
-from warehouse.schoolTeacherCount t
+from warehouse.TeacherCountSchool t
 left join DimensionAuthority da on da.AuthorityCode = t.AuthorityCode
 where t.SurveyYear = @year
 and t.GenderCode IS NOT NULL
