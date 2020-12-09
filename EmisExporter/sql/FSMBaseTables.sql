@@ -6,11 +6,12 @@ IF OBJECT_ID('tempdb.dbo.#TeacherBaseTable', 'U') IS NOT NULL DROP TABLE dbo.#Te
 
 select 
 'ISCED ' + SUBSTRING(DL.[ISCED Level], 6, 1) as ISCED_TOP, 
-CASE DL.[ISCED Level] 
-  WHEN 'ISCED0' THEN 'ISCED 0'
+CASE DL.[ISCED SubClass] 
+  WHEN 'ISCED01' THEN 'ISCED 01'
+  WHEN 'ISCED02' THEN 'ISCED 02'
   WHEN 'ISCED1' THEN 'ISCED 1'
-  WHEN 'ISCED2' THEN 'ISCED 24'
-  WHEN 'ISCED3' THEN 'ISCED 34'
+  WHEN 'ISCED24' THEN 'ISCED 24'
+  WHEN 'ISCED34' THEN 'ISCED 34'
 END as ISCED,
 CASE DA.AuthorityGroup 	WHEN 'Government' THEN 'Public'	ELSE 'Private' END as SCHOOLTYPE,
 E.GenderCode as GENDER,
@@ -27,15 +28,16 @@ left join DimensionAuthority DA on E.AuthorityCode = DA.AuthorityCode
 left join DimensionLevel DL on E.ClassLevel = DL.LevelCode
 where E.SurveyYear = @year AND E.Enrol IS NOT NULL
 
-group by DL.[ISCED Level], DA.AuthorityGroup, E.GenderCode, E.Age, DL.[Year of Education]
+group by DL.[ISCED Level], DL.[ISCED SubClass], DA.AuthorityGroup, E.GenderCode, E.Age, DL.[Year of Education]
 --Teachers
 
 select
 	CASE t.ISCEDSubClass
-		WHEN 'ISCED0' THEN 'ISCED 0'
+	    WHEN 'ISCED01' THEN 'ISCED 01'
+		WHEN 'ISCED02' THEN 'ISCED 02'
 		WHEN 'ISCED1' THEN 'ISCED 1'
-		WHEN 'ISCED2' THEN 'ISCED 24'
-		WHEN 'ISCED3' THEN 'ISCED 34'
+		WHEN 'ISCED24' THEN 'ISCED 24'
+		WHEN 'ISCED34' THEN 'ISCED 34'
 	END as ISCED,
 	CASE  
 		WHEN da.AuthorityGroupCode = 'G' THEN 'PUBLIC'

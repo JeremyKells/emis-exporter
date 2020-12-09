@@ -201,7 +201,7 @@ namespace EmisExporter
       }
     }
 
-    // A6: Number of students in initial lower secondary general education by age, grade and sex																										
+    // A6: Number of students and repeaters in initial lower and upper secondary general education by age, grade and sex																										
     void sheetA6(Excel.Application excelApp, SqlConnection sqlConn, string year, string country)
     {
 
